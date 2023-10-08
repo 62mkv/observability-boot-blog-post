@@ -9,6 +9,7 @@ import io.micrometer.observation.aop.ObservedAspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.actuate.web.exchanges.HttpExchange;
 import org.springframework.boot.actuate.web.exchanges.HttpExchangeRepository;
 import org.springframework.boot.actuate.web.exchanges.InMemoryHttpExchangeRepository;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -18,7 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Hooks;
+import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Random;
 import java.util.stream.StreamSupport;
 
@@ -26,6 +30,7 @@ import java.util.stream.StreamSupport;
 public class ServerApplication {
 
 	public static void main(String[] args) {
+		Hooks.enableAutomaticContextPropagation();
 		SpringApplication.run(ServerApplication.class, args);
 	}
 
@@ -39,7 +44,21 @@ public class ServerApplication {
 
 	@Bean
 	HttpExchangeRepository httpExchangeRepository() {
-		return new InMemoryHttpExchangeRepository();
+		return new HttpExchangeRepository() {
+
+			private final HttpExchangeRepository delegate = new InMemoryHttpExchangeRepository();
+			@Override
+			public List<HttpExchange> findAll() {
+				return delegate.findAll();
+			}
+
+			@Override
+			public void add(HttpExchange httpExchange) {
+				if (!httpExchange.getRequest().getUri().getPath().contains("actuator")) {
+					delegate.add(httpExchange);
+				}
+			}
+		};
 	}
 }
 
@@ -55,7 +74,7 @@ class MyController {
 	}
 
 	@GetMapping("/user/{userId}")
-	String userName(@PathVariable("userId") String userId) {
+	Mono<String> userName(@PathVariable("userId") String userId) {
 		log.info("Got a request");
 		return myUserService.userName(userId);
 	}
@@ -77,7 +96,7 @@ class MyUserService {
 	@Observed(name = "user.name",
 			contextualName = "getting-user-name",
 			lowCardinalityKeyValues = {"userType", "userType2"})
-	String userName(String userId) {
+	Mono<String> userName(String userId) {
 		log.info("Getting user name for user with id <{}>", userId);
 		try {
 			Thread.sleep(random.nextLong(200L)); // simulates latency
@@ -85,7 +104,7 @@ class MyUserService {
 		catch (InterruptedException e) {
 			throw new RuntimeException(e);
 		}
-		return "foo";
+		return Mono.just("foo");
 	}
 }
 // end::service[]
