@@ -1,30 +1,26 @@
 package com.example.server;
 
-import java.util.Collections;
-import java.util.Random;
-import java.util.stream.StreamSupport;
-
 import io.micrometer.common.KeyValue;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationHandler;
 import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.observation.annotation.Observed;
 import io.micrometer.observation.aop.ObservedAspect;
-import jakarta.servlet.DispatcherType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.actuate.web.exchanges.HttpExchangeRepository;
+import org.springframework.boot.actuate.web.exchanges.InMemoryHttpExchangeRepository;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Random;
+import java.util.stream.StreamSupport;
 
 @SpringBootApplication
 public class ServerApplication {
@@ -41,6 +37,10 @@ public class ServerApplication {
 	}
 	// end::aspect[]
 
+	@Bean
+	HttpExchangeRepository httpExchangeRepository() {
+		return new InMemoryHttpExchangeRepository();
+	}
 }
 
 // tag::controller[]

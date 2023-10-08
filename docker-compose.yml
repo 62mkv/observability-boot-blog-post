@@ -1,5 +1,12 @@
 
 services:
+    collector:
+        image: otel/opentelemetry-collector-contrib
+        extra_hosts: ['host.docker.internal:host-gateway']
+        volumes:
+            - ./docker/otel-collector/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+        ports:
+            - 4318:4318
     tempo:
         image: grafana/tempo
         extra_hosts: ['host.docker.internal:host-gateway']
