@@ -7,6 +7,9 @@ services:
             - ./docker/otel-collector/config.yaml:/etc/otelcol-contrib/config.yaml:ro
         ports:
             - 4318:4318
+        depends_on:
+          tempo:
+            condition: service_started
     tempo:
         image: grafana/tempo
         extra_hosts: ['host.docker.internal:host-gateway']
