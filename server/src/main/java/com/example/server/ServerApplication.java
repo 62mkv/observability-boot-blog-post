@@ -1,11 +1,10 @@
 package com.example.server;
 
 import io.micrometer.common.KeyValue;
+import io.micrometer.common.KeyValues;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationHandler;
 import io.micrometer.observation.ObservationRegistry;
-import io.micrometer.observation.annotation.Observed;
-import io.micrometer.observation.aop.ObservedAspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.observability.micrometer.Micrometer;
 import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
 
@@ -39,14 +39,6 @@ public class ServerApplication {
 		Hooks.enableAutomaticContextPropagation();
 		SpringApplication.run(ServerApplication.class, args);
 	}
-
-	// tag::aspect[]
-	// To have the @Observed support we need to register this aspect
-	@Bean
-	ObservedAspect observedAspect(ObservationRegistry observationRegistry) {
-		return new ObservedAspect(observationRegistry);
-	}
-	// end::aspect[]
 
 	@Bean
 	HttpExchangeRepository httpExchangeRepository() {
@@ -100,20 +92,28 @@ class MyUserService {
         this.userRepository = userRepository;
     }
 
-    private final Random random = new Random();
+	private final Random random = new Random();
+
+	@Autowired
+	private ObservationRegistry observationRegistry;
+
+	public void setObservationRegistry(ObservationRegistry observationRegistry) {
+		this.observationRegistry = observationRegistry;
+	}
 
 	// Example of using an annotation to observe methods
 	// <user.name> will be used as a metric name
 	// <getting-user-name> will be used as a span  name
 	// <userType=userType2> will be set as a tag for both metric & span
-	@Observed(name = "user.name",
-			contextualName = "getting-user-name",
-			lowCardinalityKeyValues = {"userType", "userType2"})
 	Mono<String> userName(String userId) {
 		return userRepository.findById(Long.valueOf(userId))
                 .then(Mono.just("foo"))
-				.delayElement(Duration.ofMillis(random.nextLong(200L)))
-				.doOnSubscribe(ignored -> log.info("Getting user name for user with id <{}>", userId));
+				.delayElement(Duration.ofMillis(random.nextLong(1000L)))
+				.doOnSubscribe(ignored -> log.info("Getting user name for user with id <{}>", userId))
+				.name("user.name")
+				.tap(Micrometer.observation(observationRegistry, registry -> Observation.createNotStarted("user.name", registry)
+						.contextualName("getting-user-name")
+						.lowCardinalityKeyValues(KeyValues.of("userType", "userType2"))));
 	}
 }
 // end::service[]

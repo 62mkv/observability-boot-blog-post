@@ -61,7 +61,12 @@
 			<groupId>io.opentelemetry</groupId>
 			<artifactId>opentelemetry-exporter-otlp</artifactId>
 		</dependency>
-
+		<!-- For Reactive "custom" Tracing -->
+		<dependency>
+			<groupId>io.projectreactor</groupId>
+			<artifactId>reactor-core-micrometer</artifactId>
+			<version>1.0.8</version>
+		</dependency>
 		<!-- For pushing logs out -->
 		<dependency>
 			<groupId>com.github.loki4j</groupId>
